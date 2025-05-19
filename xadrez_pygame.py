@@ -1,8 +1,8 @@
 import pygame
 import chess
-import sys
 import time
 import math
+import sys
 import random
 
 # Configurações do jogo
@@ -14,10 +14,10 @@ SQ_SIZE = HEIGHT // DIMENSION
 MAX_FPS = 60
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-GREEN = (0, 255, 0)
-GRAY = (128, 128, 128)
-BLUE = (0, 0, 128)
-RED = (255, 0, 0)
+LIGHT_SQUARE = (240, 217, 181)
+DARK_SQUARE = (181, 136, 99)
+HIGHLIGHT = (247, 247, 105, 128)  # Amarelo com transparência
+BUTTON_COLOR = (100, 100, 200)
 YELLOW = (255, 255, 0)
 TIME_LIMIT = 10  # limite de tempo para IA pensar (segundos)
 
@@ -42,14 +42,58 @@ UNICODE_PIECE = {
 
 # Inicialização do Pygame
 pygame.init()
-pygame.font.init()
+font = pygame.font.SysFont('Arial', 32)
+small_font = pygame.font.SysFont('Arial', 16)
+button_font = pygame.font.SysFont('Arial', 24)
+
+def draw_text_button(screen, text, x, y, width, height, color, text_color):
+    """Desenha um botão com texto centralizado."""
+    button_rect = pygame.Rect(x, y, width, height)
+    pygame.draw.rect(screen, color, button_rect)
+    pygame.draw.rect(screen, BLACK, button_rect, 2)  # Borda
+    
+    text_surf = button_font.render(text, True, text_color)
+    text_rect = text_surf.get_rect(center=button_rect.center)
+    screen.blit(text_surf, text_rect)
+    
+    return button_rect
+
+def select_color():
+    """Tela para seleção da cor com a qual o jogador deseja jogar."""
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption('Xadrez - Selecione sua cor')
+    
+    white_button = None
+    black_button = None
+    
+    running = True
+    while running:
+        screen.fill((128, 128, 128))
+        title = font.render("Escolha com qual cor deseja jogar:", True, BLACK)
+        screen.blit(title, (WIDTH//2 - title.get_width()//2, HEIGHT//4))
+        
+        white_button = draw_text_button(screen, "Brancas", WIDTH//4 - 75, HEIGHT//2, 150, 50, WHITE, BLACK)
+        black_button = draw_text_button(screen, "Pretas", 3*WIDTH//4 - 75, HEIGHT//2, 150, 50, BLACK, WHITE)
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = pygame.mouse.get_pos()
+                if white_button.collidepoint(mouse_pos):
+                    return True  # Jogador escolheu brancas
+                if black_button.collidepoint(mouse_pos):
+                    return False  # Jogador escolheu pretas
+        
+        pygame.display.flip()
+        pygame.time.Clock().tick(60)
 
 def draw_game_state(screen, board, valid_moves=None, sq_selected=None):
     """Responsável por todo o desenho gráfico do estado atual do jogo."""
     draw_board(screen)  # desenha os quadrados
     highlight_squares(screen, board, valid_moves, sq_selected)  # destaca movimentos possíveis
     draw_pieces(screen, board)  # desenha as peças no tabuleiro
-
 
 def draw_board(screen):
     """Desenha o tabuleiro."""
@@ -58,7 +102,6 @@ def draw_board(screen):
         for col in range(DIMENSION):
             color = colors[(row + col) % 2]
             pygame.draw.rect(screen, color, pygame.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE))
-
 
 def highlight_squares(screen, board, valid_moves, sq_selected):
     """Destaca o quadrado selecionado e movimentos válidos."""
@@ -77,7 +120,6 @@ def highlight_squares(screen, board, valid_moves, sq_selected):
                 end_col = move.to_square % 8
                 s.fill(pygame.Color('green'))
                 screen.blit(s, (end_col * SQ_SIZE, end_row * SQ_SIZE))
-
 
 def draw_pieces(screen, board):
     """Desenha as peças usando símbolos Unicode."""
@@ -107,7 +149,6 @@ def draw_pieces(screen, board):
                 main_text = font.render(glyph, True, main_color)
                 main_rect = main_text.get_rect(center=(center_x, center_y))
                 screen.blit(main_text, main_rect)
-
 
 def draw_move_log(screen, move_log, captured_white, captured_black):
     """Desenha painel de histórico e peças capturadas."""
@@ -142,7 +183,6 @@ def draw_move_log(screen, move_log, captured_white, captured_black):
         text = font.render(move_text, True, pygame.Color("white"))
         screen.blit(text, (x, y + i * 20))
 
-
 def draw_end_game_text(screen, text):
     """Desenha a mensagem de fim de jogo na tela."""
     font = pygame.font.SysFont("Arial", 32, True, False)
@@ -159,7 +199,6 @@ def draw_end_game_text(screen, text):
     restart_location = text_location.move(0, text_object.get_height() + 10)
     screen.blit(restart_text, restart_location)
 
-
 def evaluate(board: chess.Board) -> int:
     """Avaliação simples baseada apenas em material. Pontuação positiva favorece as brancas."""
 
@@ -175,7 +214,6 @@ def evaluate(board: chess.Board) -> int:
         score += len(board.pieces(piece_type, chess.WHITE)) * value
         score -= len(board.pieces(piece_type, chess.BLACK)) * value
     return score
-
 
 def alphabeta(
     board: chess.Board,
@@ -222,7 +260,6 @@ def alphabeta(
                 break  # poda alfa
         return min_eval
 
-
 def alphabeta_root(board: chess.Board, depth: int, start_time: float, time_limit: int):
     """Camada raiz do Alpha-Beta que devolve também o melhor lance encontrado."""
 
@@ -246,7 +283,6 @@ def alphabeta_root(board: chess.Board, depth: int, start_time: float, time_limit
             best_move = move
     return best_value, best_move
 
-
 def search_best_move(board: chess.Board, time_limit: int = TIME_LIMIT):
     """Iterative Deepening usando Alpha-Beta até esgotar o tempo."""
 
@@ -266,13 +302,11 @@ def search_best_move(board: chess.Board, time_limit: int = TIME_LIMIT):
         depth += 1
     return best_move
 
-
 def get_chess_position(pos):
     """Converte posição do clique do mouse para posição no tabuleiro."""
     row = pos[1] // SQ_SIZE
     col = pos[0] // SQ_SIZE
     return row, col
-
 
 def convert_to_chess_move(start_sq, end_sq, board):
     """Converte as coordenadas de tela em um movimento de xadrez."""
@@ -292,7 +326,6 @@ def convert_to_chess_move(start_sq, end_sq, board):
     
     return move
 
-
 def get_valid_moves(board, start_sq):
     """Obtém os movimentos válidos para a peça na posição start_sq."""
     row, col = start_sq
@@ -307,8 +340,11 @@ def get_valid_moves(board, start_sq):
         return valid_moves
     return []
 
-
 def main():
+    """Função principal do jogo."""
+    # Permite que o jogador escolha a cor
+    player_is_white = select_color()
+
     # Inicializar tela e relógio
     screen = pygame.display.set_mode((WIDTH + MOVE_LOG_PANEL_WIDTH, HEIGHT))
     pygame.display.set_caption("Xadrez com IA Alpha-Beta")
@@ -318,8 +354,8 @@ def main():
     board = chess.Board()
     
     # Sorteio para definir a cor do sistema
-    system_color = random.choice([chess.WHITE, chess.BLACK])
-    human_color = not system_color
+    system_color = chess.BLACK if player_is_white else chess.WHITE
+    human_color = chess.WHITE if player_is_white else chess.BLACK
     
     status_font = pygame.font.SysFont("Arial", 18, True, False)
     status_text = f"Você joga com as {'brancas' if human_color else 'pretas'}"
